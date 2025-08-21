@@ -25,6 +25,13 @@ Alejandro Morales      | 08/06/2025     | consejo_nl_dbt      | created raw tier
 ===========================================================================================================
 */
 
+
+{{ config(
+    materialized='view',
+    tags=['finanzas', 'balance_presupuestario', 'balance_presupuestario_cp']
+) }}
+
+
 with source as (
     select
         TYPE,
@@ -35,6 +42,7 @@ with source as (
         YEAR_QUARTER,
         SURROGATE_KEY
     from {{ source('staging', 'nuevo_leon_balance_presupuestario') }}
+    where {{ period_filter('FULL_DATE') }}   -- ← filtra por año cuando is_cp=true
 )
 
 select * from source

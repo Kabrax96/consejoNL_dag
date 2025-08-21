@@ -33,21 +33,24 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 2 model
 */
 
 
-{%- set model_run_start_time_variable = modules.datetime.datetime.now().astimezone(modules.pytz.timezone("America/Mexico_City")) -%}
+{{ config(
+    materialized = "incremental",
+    unique_key = ["surrogate_key"],
+    on_schema_change = "append_new_columns",
+    merge_exclude_columns = ["CREATE_DTTM"],
+    snowflake_warehouse = "COMPUTE_WH",
+    tags = ["finanzas", "ingresos_detallado", "t2", "ingresos_detallado_cp"],
+    pre_hook = [
+      "SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
+    ],
+    post_hook = [
+      "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
+    ]
+) }}
 
-{{
-    config(
-        materialized = "incremental",
-        unique_key = ["surrogate_key"],
-        on_schema_change = "append_new_columns",
-        merge_exclude_columns = ["CREATE_DTTM"],
-        snowflake_warehouse = "COMPUTE_WH",
-        pre_hook = ["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"],
-        post_hook = [
-            "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
-        ]
-    )
-}}
+
+
+{%- set model_run_start_time_variable = modules.datetime.datetime.now().astimezone(modules.pytz.timezone("America/Mexico_City")) -%}
 
 with base as (
     select
@@ -66,9 +69,14 @@ with base as (
         ampliaciones_reducciones,
         current_timestamp() as create_dttm
     from {{ ref('t1__finanzas__ingresos_detallado') }}
+    where {{ period_filter('fecha') }}
+
     {% if is_incremental() %}
-      where fecha > (select coalesce(max(fecha), '2000-01-01') from {{ this }})
+      and fecha > (
+        select coalesce(max(fecha), '2000-01-01') from {{ this }}
+      )
     {% endif %}
 )
 
-select * from base
+select *
+from base

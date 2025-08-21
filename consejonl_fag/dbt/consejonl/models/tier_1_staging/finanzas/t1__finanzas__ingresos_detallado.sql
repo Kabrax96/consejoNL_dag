@@ -28,9 +28,18 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 1 stagi
 ===========================================================================================================
 */
 
+
+
+{{ config(
+    materialized='view',
+    tags=['finanzas', 'ingresos_detallado', 'ingresos_detallado_cp']
+) }}
+
+
+
 with src as (
     select
-        -- Raw columns from staging table (excluding Airbyte metadata)
+         -- Raw columns from staging table (excluding Airbyte metadata)
         FECHA,
         CUARTO,
         SECCION,
@@ -45,23 +54,24 @@ with src as (
         CLAVE_SECUNDARIA,
         AMPLIACIONES_REDUCCIONES
     from {{ source('staging', 'nuevo_leon_ingresos_detallado') }}
+    where {{ period_filter('FECHA') }}
 ),
 
 normalized as (
     select
-        {{ clean_date('FECHA') }}                    as FECHA,
-        {{ clean_text('CUARTO') }}                   as CUARTO,
-        {{ clean_text('SECCION') }}                  as SECCION,
-        {{ clean_text('CONCEPTO') }}                 as CONCEPTO,
-        {{ clean_numeric('ESTIMADO') }}              as ESTIMADO,
-        {{ clean_numeric('DEVENGADO') }}             as DEVENGADO,
-        {{ clean_numeric('RECAUDADO') }}             as RECAUDADO,
-        {{ clean_numeric('DIFERENCIA') }}            as DIFERENCIA,
-        {{ clean_numeric('MODIFICADO') }}            as MODIFICADO,
-        {{ clean_text('SURROGATE_KEY') }}            as SURROGATE_KEY,
-        {{ clean_text('CLAVE_PRIMARIA') }}           as CLAVE_PRIMARIA,
-        {{ clean_text('CLAVE_SECUNDARIA') }}         as CLAVE_SECUNDARIA,
-        {{ clean_numeric('AMPLIACIONES_REDUCCIONES') }} as AMPLIACIONES_REDUCCIONES
+        {{ clean_date('FECHA') }}                        as FECHA,
+        {{ clean_text('CUARTO') }}                       as CUARTO,
+        {{ clean_text('SECCION') }}                      as SECCION,
+        {{ clean_text('CONCEPTO') }}                     as CONCEPTO,
+        {{ clean_numeric('ESTIMADO') }}                  as ESTIMADO,
+        {{ clean_numeric('DEVENGADO') }}                 as DEVENGADO,
+        {{ clean_numeric('RECAUDADO') }}                 as RECAUDADO,
+        {{ clean_numeric('DIFERENCIA') }}                as DIFERENCIA,
+        {{ clean_numeric('MODIFICADO') }}                as MODIFICADO,
+        {{ clean_text('SURROGATE_KEY') }}                as SURROGATE_KEY,
+        {{ clean_text('CLAVE_PRIMARIA') }}               as CLAVE_PRIMARIA,
+        {{ clean_text('CLAVE_SECUNDARIA') }}             as CLAVE_SECUNDARIA,
+        {{ clean_numeric('AMPLIACIONES_REDUCCIONES') }}  as AMPLIACIONES_REDUCCIONES
     from src
 )
 
