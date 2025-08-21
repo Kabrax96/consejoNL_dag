@@ -1,5 +1,6 @@
+# consejonl_fag/definitions.py
 import dagster as dg
-from .airbyte_custom import airbyte_sync_consejo_nl
+from .integrations.airbyte_custom import airbyte_sync_consejo_nl
 from .dbt_defs import dbt_models, dbt, dbt_only_job, airbyte_to_dbt_sensor
 
 defs = dg.Definitions(

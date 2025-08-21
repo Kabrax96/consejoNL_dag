@@ -1,0 +1,5 @@
+locations:
+  - location_name: consejoNL_dag
+    code_source:
+      module_name: consejonl_fag.definitions
+      attribute: defs

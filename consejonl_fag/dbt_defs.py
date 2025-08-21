@@ -1,19 +1,22 @@
+# consejonl_fag/dbt_defs.py
 from pathlib import Path
 import os
 import dagster as dg
 from dagster_dbt import DbtProject, DbtCliResource, dbt_assets
 
-# === Ruta a tu proyecto dbt ===
-DBT_DIR = Path("/Users/alexm./Desktop/consejoNL_dbt/consejonl")  # <- tu ruta
+# === Ruta a tu proyecto dbt dentro del repo ===
+# Estructura esperada: consejonl_fag/dbt/consejonl/...
+DBT_DIR = Path(__file__).resolve().parent / "dbt" / "consejonl"
 
 project = DbtProject(project_dir=DBT_DIR)
-project.prepare_if_dev()  # asegura manifest en dev
+# Si quieres preparar manifest en dev local, puedes usar:
+# project.prepare_if_dev()
 
 # === Recurso dbt CLI ===
 dbt = DbtCliResource(
     project_dir=str(DBT_DIR),
-    target="dev",
-    profiles_dir=os.getenv("DBT_PROFILES_DIR"),
+    target=os.getenv("DBT_TARGET", "dev"),
+    profiles_dir=os.getenv("DBT_PROFILES_DIR"),  # si usas profiles.yml
 )
 
 # === Op para correr dbt build "ad hoc" (para jobs secuenciales) ===
@@ -25,7 +28,6 @@ def run_dbt_build(context):
         raise Exception("dbt build failed")
 
 # === Assets de dbt (para modo assets + jobs basados en selección) ===
-# Nota: sin group_name/deps si tu versión de dagster_dbt no lo soporta.
 @dbt_assets(manifest=project.manifest_path)
 def dbt_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     # Ejecuta dbt build (models + seeds + snapshots + tests)

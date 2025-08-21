@@ -1,10 +1,10 @@
-# airbyte/airflow_defs.py
+# consejonl_fag/integrations/airflow_defs.py
 import os, json, time, urllib.request
 from dagster import op, Field, Out, In
 
-AIRFLOW_API = os.environ["AIRFLOW_API"]      # ej: https://<tu-airflow>/api/v1
-AIRFLOW_DAG_ID = os.environ["AIRFLOW_DAG_ID"]  # ej: post_rds_validations
-AIRFLOW_TOKEN = os.getenv("AIRFLOW_TOKEN", "") # si usas bearer; si no, quítalo
+AIRFLOW_API = os.environ["AIRFLOW_API"]       # ej: https://<tu-airflow>/api/v1
+AIRFLOW_DAG_ID = os.environ["AIRFLOW_DAG_ID"] # ej: post_rds_validations
+AIRFLOW_TOKEN = os.getenv("AIRFLOW_TOKEN", "")  # si usas bearer; si no, quítalo
 
 def _req(path, method="GET", body=None):
     url = f"{AIRFLOW_API}{path}"
