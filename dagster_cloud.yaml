@@ -1,5 +1,7 @@
 locations:
   - location_name: consejoNL_dag
+    build:
+      python_version: "3.11"
     code_source:
       module_name: consejonl_fag.definitions
       attribute: defs
