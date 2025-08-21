@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: audit
+    database: CONSEJO_NL
+    schema: AUDIT
+    tables:
+      - name: dbt_job_load_control
+        description: Tabla de control de cargas incrementales para DBT

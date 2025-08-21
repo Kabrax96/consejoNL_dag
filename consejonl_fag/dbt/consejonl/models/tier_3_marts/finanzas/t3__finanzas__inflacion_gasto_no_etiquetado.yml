@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: t3__finanzas__inflacion_gasto_no_etiquetado
+    description: >
+      Computes the inflation-adjusted growth metric for Gasto No Etiquetado (GNE) using:
+      ((GNE in year X) / (GNE in year X-5 * (1 + INFLATION_X)))^(1/4) - 1.
+      GNE is aggregated from Section I by calendar year and joined to the inflation seed.
+    columns:
+      - name: year
+        description: "Calendar year (derived from FECHA)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('inflacion_anual')
+              field: year
+      - name: gne_x
+        description: "GNE for year X (sum of MODIFICADO on Section I)."
+      - name: gne_x_minus_5
+        description: "GNE for year X-5 (sum of MODIFICADO on Section I, five years before X)."
+      - name: inflation_x
+        description: "Annual inflation for year X (from seed inflacion_anual, decimal form)."
+      - name: adjusted_rate_4yr
+        description: "Computed 4-year adjusted growth rate per provided formula (nullable when base data missing)."
+      - name: create_dttm
+        description: "Audit column for load timestamp."

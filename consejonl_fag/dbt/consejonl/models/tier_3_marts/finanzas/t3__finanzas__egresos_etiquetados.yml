@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: t3__finanzas__egresos_etiquetados
+    description: >
+      Labeled expenditures slice (Sections other than I). This model filters rows where SECCION <> 'I'.
+      Tier 2 column names are preserved without renaming.
+    columns:
+      - name: fecha
+        description: "Record date."
+        tests:
+          - not_null
+      - name: codigo
+        description: "Primary budget code from source."
+      - name: cuarto
+        description: "Year-quarter label from source (e.g., 2024_Q1)."
+      - name: pagado
+        description: "Executed payments amount."
+      - name: seccion
+        description: "Budget section label (not 'I' in this model)."
+        tests:
+          - not_null
+      - name: aprobado
+        description: "Approved amount (raw from source)."
+      - name: concepto
+        description: "Budget concept."
+      - name: devengado
+        description: "Accrued amount."
+      - name: modificado
+        description: "Modified amount after adjustments."
+        tests:
+          - not_null
+      - name: subejercicio
+        description: "Under-execution amount (raw)."
+      - name: surrogate_key
+        description: "Surrogate key propagated from Tier 2."
+        tests:
+          - not_null
+      - name: "AMPLIACIONES/REDUCCIONES"
+        description: "Budget increases/decreases (raw)."
+      - name: create_dttm
+        description: "Audit column for load timestamp."

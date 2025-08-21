@@ -1,0 +1,15 @@
+version: 2
+
+seeds:
+  - name: inflacion_anual
+    description: "Annual inflation (Dec-to-Dec) for Mexico, used to adjust GNE growth in Tier 3 models."
+    columns:
+      - name: year
+        description: "Calendar year."
+        tests:
+          - not_null
+          - unique
+      - name: inflation
+        description: "Annual inflation rate for the year, decimal format (e.g., 0.055 = 5.5%)."
+        tests:
+          - not_null

@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: t3__finanzas__egresos_no_etiquetados
+    description: >
+      Section I (Gasto No Etiquetado) slice from detailed expenditures, ready for marts and KPIs.
+      This model filters rows where SECCION = 'I' and preserves Tier 2 column names without renaming.
+    columns:
+      - name: fecha
+        description: "Record date."
+        tests:
+          - not_null
+      - name: codigo
+        description: "Primary budget code from source."
+      - name: cuarto
+        description: "Year-quarter label from source (e.g., 2024_Q1)."
+      - name: pagado
+        description: "Executed payments amount."
+      - name: seccion
+        description: "Budget section label. Expected to be 'I' for this model."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['I']
+      - name: aprobado
+        description: "Approved amount (raw from source)."
+      - name: concepto
+        description: "Budget concept."
+      - name: devengado
+        description: "Accrued amount."
+      - name: modificado
+        description: "Modified amount after adjustments (recommended measure for GNE)."
+        tests:
+          - not_null
+      - name: subejercicio
+        description: "Under-execution amount (raw)."
+      - name: surrogate_key
+        description: "Surrogate key propagated from Tier 2."
+        tests:
+          - not_null
+      - name: "AMPLIACIONES/REDUCCIONES"
+        description: "Budget increases/decreases (raw)."
+      - name: create_dttm
+        description: "Audit column for load timestamp."
