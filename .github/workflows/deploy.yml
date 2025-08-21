@@ -1,29 +1,25 @@
 name: Serverless Prod Deployment
-
 on:
   push:
     branches:
-      - main
-      - master
+      - "main"
+      - "master"
 
 concurrency:
-  # Cancela despliegues en progreso del mismo branch
+  # Cancel in-progress deploys to same branch
   group: ${{ github.ref }}/deploy
   cancel-in-progress: true
-
 env:
-  # URL de tu deployment (usa HTTPS y /prod si es tu deployment)
-  DAGSTER_CLOUD_URL: "https://connl.dagster.cloud/prod"
+  DAGSTER_CLOUD_URL: "http://connl.dagster.cloud"
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-  ENABLE_FAST_DEPLOYS: "true"
-  PYTHON_VERSION: "3.11"
-  # Ruta del archivo en tu repo
-  DAGSTER_CLOUD_FILE: "dagster_cloud.yaml"
+  ENABLE_FAST_DEPLOYS: 'true'
+  PYTHON_VERSION: '3.10'
+  DAGSTER_CLOUD_FILE: 'dagster_cloud.yaml'
 
 jobs:
   dagster_cloud_default_deploy:
     name: Dagster Serverless Deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       build_info: ${{ steps.parse-workspace.outputs.build_info }}
 
@@ -37,49 +33,47 @@ jobs:
         id: parse-workspace
         uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v0.1
         with:
-          dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
+          dagster_cloud_file: $DAGSTER_CLOUD_FILE
 
       - name: Checkout for Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
+          ref: ${{ github.head_ref }}
           path: project-repo
 
-      - name: Python Executable Deploy (Py ${{ env.PYTHON_VERSION }})
+      - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          dagster_cloud_file: "${{ github.workspace }}/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
-          build_output_dir: "${{ github.workspace }}/build"
-          python-version: "${{ env.PYTHON_VERSION }}"
+          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/$DAGSTER_CLOUD_FILE"
+          build_output_dir: "$GITHUB_WORKSPACE/build"
+          python_version: "${{ env.PYTHON_VERSION }}"
         env:
-          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-          DAGSTER_CLOUD_URL: ${{ env.DAGSTER_CLOUD_URL }}
-          DAGSTER_CLOUD_FILE: ${{ env.DAGSTER_CLOUD_FILE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   dagster_cloud_docker_deploy:
     name: Docker Deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: needs.dagster_cloud_default_deploy.outputs.build_info
     needs: dagster_cloud_default_deploy
     strategy:
       fail-fast: false
       matrix:
         location: ${{ fromJSON(needs.dagster_cloud_default_deploy.outputs.build_info) }}
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
       - name: Build and deploy to Dagster Cloud serverless
         uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v0.1
         with:
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
           location: ${{ toJson(matrix.location) }}
           base_image: "python:${{ env.PYTHON_VERSION }}-slim"
-          # organization_id no suele ser necesario para Serverless; quítalo si no lo usas
-          # organization_id: ${{ secrets.ORGANIZATION_ID }}
+          # Uncomment to pass through Github Action secrets as a JSON string of key-value pairs
+          # env_vars: ${{ toJson(secrets) }}
+          organization_id: ${{ secrets.ORGANIZATION_ID }}
         env:
-          DAGSTER_CLOUD_URL: ${{ env.DAGSTER_CLOUD_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
