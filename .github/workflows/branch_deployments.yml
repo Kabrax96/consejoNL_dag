@@ -31,45 +31,40 @@ jobs:
         id: parse-workspace
         uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v0.1
         with:
-          dagster_cloud_file: $DAGSTER_CLOUD_FILE
+          dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
 
-      - name: Checkout repo (project-repo/)
+      - name: Checkout repo (exact commit)
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
-          path: project-repo
+          ref: ${{ github.sha }}
 
-      - name: Generate requirements.txt for PEX (PR)
+      - name: Verify YAML & deps (debug)
         if: steps.prerun.outputs.result == 'pex-deploy'
-        working-directory: project-repo/consejonl_fag
         shell: bash
         run: |
           set -euo pipefail
-          cat > requirements.txt <<'REQ'
-          dagster==1.11.5
-          dagster-cloud==1.11.5
-          dagster-dbt==0.27.5
-          dbt-core==1.10.6
-          dbt-snowflake==1.10.0
-          snowflake-connector-python==3.16.0
-          networkx==3.5
-          REQ
-          echo "=== requirements.txt ==="
-          cat requirements.txt
+          YAML="$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
+          echo "YAML path: $YAML"
+          test -f "$YAML" || { echo "ERROR: No existe $YAML"; exit 1; }
 
-      - name: Python Executable Deploy (PR)
+          REQS="$GITHUB_WORKSPACE/consejonl_fag/requirements.txt"
+          echo "Revisando $REQS"
+          test -f "$REQS" || { echo "ERROR: falta $REQS"; exit 1; }
+          grep -E '^dagster-cloud==' "$REQS" || { echo "ERROR: falta dagster-cloud en $REQS"; exit 1; }
+
+      - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
+          dagster_cloud_file: "$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
           python_version: "${{ env.PYTHON_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   dagster_cloud_docker_deploy:
-    name: Docker Deploy (PR)
+    name: Docker Deploy
     runs-on: ubuntu-20.04
     if: needs.dagster_cloud_default_deploy.outputs.build_info
     needs: dagster_cloud_default_deploy
@@ -79,9 +74,10 @@ jobs:
         location: ${{ fromJSON(needs.dagster_cloud_default_deploy.outputs.build_info) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.sha }}
+
       - name: Build and deploy to Dagster Cloud serverless
         uses: dagster-io/dagster-cloud-action/actions/serverless_branch_deploy@v0.1
         with:
