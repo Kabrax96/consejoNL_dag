@@ -1,3 +1,10 @@
 # perfiles locales con secretos
 consejonl_fag/dbt/profiles_local/
 requirements.txt
+.venv312
+# build artefacts
+*.egg-info/
+dist/
+build/
+__pycache__/
+.venv*/
