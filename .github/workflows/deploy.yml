@@ -40,6 +40,26 @@ jobs:
           ref: ${{ github.head_ref }}
           path: project-repo
 
+      # Genera un requirements.txt explícito para el builder de PEX
+      - name: Generate requirements.txt for PEX
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        working-directory: project-repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > requirements.txt <<'REQ'
+          dagster==1.11.5
+          dagster-cloud==1.11.5
+          dagster-dbt==0.27.5
+          dbt-core==1.10.6
+          dbt-snowflake==1.10.0
+          snowflake-connector-python==3.16.0
+          networkx==3.5
+          REQ
+          echo "=== requirements.txt ==="
+          cat requirements.txt
+
+      # Verifica que la instalación de tu paquete (vía pyproject) e import de dagster_cloud funcionen
       - name: Verify install & dagster_cloud present
         if: steps.prerun.outputs.result == 'pex-deploy'
         working-directory: project-repo
