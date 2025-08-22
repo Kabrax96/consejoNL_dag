@@ -1,0 +1,6 @@
+dagster==1.11.5
+dagster-cloud==1.11.5
+dbt-core==1.10.6
+dbt-snowflake==1.10.0
+snowflake-connector-python==3.16.0
+networkx==3.4.2
