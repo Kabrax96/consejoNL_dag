@@ -8,11 +8,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DAGSTER_CLOUD_URL: "https://connl.dagster.cloud"
+  DAGSTER_CLOUD_URL: "http://connl.dagster.cloud"
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
   ENABLE_FAST_DEPLOYS: 'true'
   PYTHON_VERSION: '3.11'
-  # IMPORTANTE: dagster_cloud.yaml está dentro de la carpeta consejonl_fag
+  # Importante: ruta RELATIVA dentro del repo al archivo dagster_cloud.yaml
   DAGSTER_CLOUD_FILE: 'consejonl_fag/dagster_cloud.yaml'
 
 jobs:
@@ -23,32 +23,28 @@ jobs:
       build_info: ${{ steps.parse-workspace.outputs.build_info }}
 
     steps:
-      - name: Prerun Checks
-        id: prerun
-        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v0.1
-
-      - name: Launch Docker Deploy
-        if: steps.prerun.outputs.result == 'docker-deploy'
-        id: parse-workspace
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v0.1
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          dagster_cloud_file: $DAGSTER_CLOUD_FILE
-
-      - name: Checkout repo (project-repo/)
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
           path: project-repo
 
-      # Genera un requirements.txt EXACTAMENTE en el mismo dir que dagster_cloud.yaml
-      - name: Generate requirements.txt for PEX
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        working-directory: project-repo/consejonl_fag
+      # Comprobación visual: que existan los archivos donde los esperamos
+      - name: Show tree
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          ls -la
+          echo "Repo cloned under project-repo:"
+          ls -la project-repo
+          echo "Contents of directory with Dagster Cloud files:"
+          ls -la "project-repo/$(dirname '${{ env.DAGSTER_CLOUD_FILE }}')"
+
+      # Garantiza que el requirements.txt exista junto a dagster_cloud.yaml
+      - name: Ensure requirements.txt next to dagster_cloud.yaml
         shell: bash
         run: |
           set -euo pipefail
-          cat > requirements.txt <<'REQ'
+          req_dir="project-repo/$(dirname '${{ env.DAGSTER_CLOUD_FILE }}')"
+          cat > "${req_dir}/requirements.txt" <<'REQ'
           dagster==1.11.5
           dagster-cloud==1.11.5
           dagster-dbt==0.27.5
@@ -58,24 +54,28 @@ jobs:
           networkx==3.5
           REQ
           echo "=== requirements.txt ==="
-          cat requirements.txt
+          cat "${req_dir}/requirements.txt"
 
-      - name: Show directory layout (debug)
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        run: |
-          echo "PWD=$(pwd)"
-          echo "-- ls project-repo --"
-          ls -la project-repo
-          echo "-- ls project-repo/consejonl_fag --"
-          ls -la project-repo/consejonl_fag
+      # Prerun para decidir si es pex-deploy o docker-deploy
+      - name: Prerun Checks
+        id: prerun
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v0.1
 
-      - name: Python Executable Deploy (PEX)
+      - name: Launch Docker Deploy
+        if: steps.prerun.outputs.result == 'docker-deploy'
+        id: parse-workspace
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v0.1
+        with:
+          dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
+
+      # Despliegue de Python Executable (PEX)
+      - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          # Pasamos la ruta REAL del dagster_cloud.yaml
-          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
-          build_output_dir: "$GITHUB_WORKSPACE/build"
+          # ¡Usa ruta RELATIVA dentro del checkout!
+          dagster_cloud_file: "project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
+          build_output_dir: "${{ runner.temp }}/build"
           python_version: "${{ env.PYTHON_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -91,10 +91,7 @@ jobs:
         location: ${{ fromJSON(needs.dagster_cloud_default_deploy.outputs.build_info) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
-
+        uses: actions/checkout@v4
       - name: Build and deploy to Dagster Cloud serverless
         uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v0.1
         with:
