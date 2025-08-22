@@ -10,6 +10,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 dependencies = [
+    "dagster==1.11.5",
+    "dagster-cloud==1.11.5",
     "agate==1.9.1",
     "alembic==1.16.4",
     "annotated-types==0.7.0",
@@ -76,7 +78,7 @@ dependencies = [
     "more-itertools==10.7.0",
     "msgpack==1.1.1",
     "multidict==6.6.4",
-    "networkx==3.4.2",
+    "networkx==3.5",
     "ordered-set==4.1.0",
     "orjson==3.11.1",
     "packaging==25.0",
