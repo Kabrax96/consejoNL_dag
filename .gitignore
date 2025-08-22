@@ -8,3 +8,9 @@ dist/
 build/
 __pycache__/
 .venv*/
+# build artefacts
+*.egg-info/
+dist/
+build/
+__pycache__/
+.venv*/
