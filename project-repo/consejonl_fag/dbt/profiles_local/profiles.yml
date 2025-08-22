@@ -1,0 +1,13 @@
+consejonl:
+  outputs:
+    dev:
+      account: RVQLREI-AC90690
+      database: consejo_nl
+      password: ConsejoNL2025!
+      role: ACCOUNTADMIN
+      schema: staging
+      threads: 12
+      type: snowflake
+      user: consejonl
+      warehouse: COMPUTE_WH
+  target: dev
