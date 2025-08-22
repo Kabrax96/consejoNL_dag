@@ -4,15 +4,15 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 concurrency:
-  # Cancel in-progress deploys to same branch
   group: ${{ github.ref }}/branch_deployments
   cancel-in-progress: true
+
 env:
-  DAGSTER_CLOUD_URL: "http://connl.dagster.cloud"
+  DAGSTER_CLOUD_URL: "https://connl.dagster.cloud"
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
   ENABLE_FAST_DEPLOYS: 'true'
   PYTHON_VERSION: '3.11'
-  DAGSTER_CLOUD_FILE: 'dagster_cloud.yaml'
+  DAGSTER_CLOUD_FILE: 'consejonl_fag/dagster_cloud.yaml'
 
 jobs:
   dagster_cloud_default_deploy:
@@ -33,25 +33,43 @@ jobs:
         with:
           dagster_cloud_file: $DAGSTER_CLOUD_FILE
 
-      - name: Checkout for Python Executable Deploy
+      - name: Checkout repo (project-repo/)
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
           path: project-repo
 
-      - name: Python Executable Deploy
+      - name: Generate requirements.txt for PEX (PR)
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        working-directory: project-repo/consejonl_fag
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > requirements.txt <<'REQ'
+          dagster==1.11.5
+          dagster-cloud==1.11.5
+          dagster-dbt==0.27.5
+          dbt-core==1.10.6
+          dbt-snowflake==1.10.0
+          snowflake-connector-python==3.16.0
+          networkx==3.5
+          REQ
+          echo "=== requirements.txt ==="
+          cat requirements.txt
+
+      - name: Python Executable Deploy (PR)
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/$DAGSTER_CLOUD_FILE"
+          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
           python_version: "${{ env.PYTHON_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   dagster_cloud_docker_deploy:
-    name: Docker Deploy
+    name: Docker Deploy (PR)
     runs-on: ubuntu-20.04
     if: needs.dagster_cloud_default_deploy.outputs.build_info
     needs: dagster_cloud_default_deploy
@@ -70,8 +88,6 @@ jobs:
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
           location: ${{ toJson(matrix.location) }}
           base_image: "python:${{ env.PYTHON_VERSION }}-slim"
-          # Uncomment to pass through Github Action secrets as a JSON string of key-value pairs
-          # env_vars: ${{ toJson(secrets) }}
           organization_id: ${{ secrets.ORGANIZATION_ID }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

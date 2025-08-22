@@ -8,11 +8,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DAGSTER_CLOUD_URL: "http://connl.dagster.cloud"
+  DAGSTER_CLOUD_URL: "https://connl.dagster.cloud"
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
   ENABLE_FAST_DEPLOYS: 'true'
   PYTHON_VERSION: '3.11'
-  DAGSTER_CLOUD_FILE: 'dagster_cloud.yaml'
+  # IMPORTANTE: dagster_cloud.yaml está dentro de la carpeta consejonl_fag
+  DAGSTER_CLOUD_FILE: 'consejonl_fag/dagster_cloud.yaml'
 
 jobs:
   dagster_cloud_default_deploy:
@@ -33,17 +34,17 @@ jobs:
         with:
           dagster_cloud_file: $DAGSTER_CLOUD_FILE
 
-      - name: Checkout for Python Executable Deploy
+      - name: Checkout repo (project-repo/)
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
           path: project-repo
 
-      # Genera un requirements.txt explícito para el builder de PEX
+      # Genera un requirements.txt EXACTAMENTE en el mismo dir que dagster_cloud.yaml
       - name: Generate requirements.txt for PEX
         if: steps.prerun.outputs.result == 'pex-deploy'
-        working-directory: project-repo
+        working-directory: project-repo/consejonl_fag
         shell: bash
         run: |
           set -euo pipefail
@@ -59,30 +60,21 @@ jobs:
           echo "=== requirements.txt ==="
           cat requirements.txt
 
-      # Verifica que la instalación de tu paquete (vía pyproject) e import de dagster_cloud funcionen
-      - name: Verify install & dagster_cloud present
+      - name: Show directory layout (debug)
         if: steps.prerun.outputs.result == 'pex-deploy'
-        working-directory: project-repo
-        shell: bash
         run: |
-          set -euo pipefail
-          python -m pip install --upgrade pip
-          pip install .
-          python - <<'PY'
-import importlib, sys
-try:
-    importlib.import_module("dagster_cloud")
-    print("OK: dagster_cloud importable")
-except Exception as e:
-    print("ERROR: dagster_cloud not importable:", e)
-    sys.exit(1)
-PY
+          echo "PWD=$(pwd)"
+          echo "-- ls project-repo --"
+          ls -la project-repo
+          echo "-- ls project-repo/consejonl_fag --"
+          ls -la project-repo/consejonl_fag
 
-      - name: Python Executable Deploy
+      - name: Python Executable Deploy (PEX)
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/$DAGSTER_CLOUD_FILE"
+          # Pasamos la ruta REAL del dagster_cloud.yaml
+          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
           python_version: "${{ env.PYTHON_VERSION }}"
         env:
