@@ -12,7 +12,6 @@ env:
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
   ENABLE_FAST_DEPLOYS: 'true'
   PYTHON_VERSION: '3.11'
-  # Ruta REAL del YAML dentro del repo:
   DAGSTER_CLOUD_FILE: 'consejonl_fag/dagster_cloud.yaml'
 
 jobs:
@@ -34,14 +33,12 @@ jobs:
         with:
           dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
 
-      # Checkout SIN subcarpeta (NO uses `path:`)
       - name: Checkout repo (exact commit)
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
 
-      # Debug y validaciones duras: YAML y requirements existen donde deben
       - name: Verify YAML & deps (debug)
         if: steps.prerun.outputs.result == 'pex-deploy'
         shell: bash
@@ -65,7 +62,6 @@ jobs:
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
         with:
-          # RUTA ABSOLUTA al YAML (sin project-repo):
           dagster_cloud_file: "$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
           python_version: "${{ env.PYTHON_VERSION }}"
