@@ -76,7 +76,7 @@ dependencies = [
     "more-itertools==10.7.0",
     "msgpack==1.1.1",
     "multidict==6.6.4",
-    "networkx = >=2.8,<3.5",
+    "networkx==3.4.2",
     "ordered-set==4.1.0",
     "orjson==3.11.1",
     "packaging==25.0",
