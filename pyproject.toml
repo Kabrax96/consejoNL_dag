@@ -13,8 +13,9 @@ dependencies = [
   "dagster==1.11.5",
   "dagster-cloud==1.11.5",
 
+  # keep a minimal set first; add more later once deploy is green
   "dbt-core==1.10.6",
   "dbt-snowflake==1.10.0",
   "snowflake-connector-python==3.16.0",
-  "networkx==3.5"
+  "networkx==3.4.2"
 ]
