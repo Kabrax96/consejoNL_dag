@@ -1,7 +1,7 @@
 name: Serverless Prod Deployment
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 concurrency:
   group: ${{ github.ref }}/deploy
@@ -40,26 +40,6 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Verify build config & files
-        run: |
-          set -euo pipefail
-          echo "=== dagster_cloud.yaml ==="
-          cat consejonl_fag/dagster_cloud.yaml
-          echo "=== repo root tree ==="
-          ls -la
-          echo "=== requirements at repo root ==="
-          test -f requirements.txt || { echo "ERROR: falta requirements.txt en la raíz"; exit 1; }
-          cat requirements.txt
-          echo "=== list consejonl_fag ==="
-          ls -la consejonl_fag
-
-
-      - name: Checkout repo (exact commit)
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Verify build config & files
         if: steps.prerun.outputs.result == 'pex-deploy'
         run: |
           set -euo pipefail
@@ -72,9 +52,9 @@ jobs:
           cat requirements.txt
           echo "=== list consejonl_fag ==="
           ls -la consejonl_fag
-
 
       - name: Generate dbt manifest (parse)
+        if: steps.prerun.outputs.result == 'pex-deploy'
         working-directory: ${{ github.workspace }}
         env:
           DBT_TARGET: ${{ secrets.DBT_TARGET }}
@@ -113,21 +93,8 @@ jobs:
           if manifests:
             print("OK: manifest.json at", manifests[0])
           else:
-            print(f"WARNING: no manifest.json found under {target_dir} (dbt 1.10 may place artifacts in hashed subdirs). This is fine since Dagster parse is at runtime.")
+            print(f"WARNING: no manifest.json found under {target_dir} (dbt 1.10 uses hashed subdirs). Runtime parse in Dagster will handle it.")
           PY
-
-
-
-      - name: Python Executable Deploy
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
-        with:
-          dagster_cloud_file: "$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
-          build_output_dir: "$GITHUB_WORKSPACE/build"
-          python_version: "${{ env.PYTHON_VERSION }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
