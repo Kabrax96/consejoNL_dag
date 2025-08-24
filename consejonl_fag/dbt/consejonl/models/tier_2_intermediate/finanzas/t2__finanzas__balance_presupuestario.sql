@@ -26,6 +26,7 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | Created intermed
 ===========================================================================================================
 */
 
+
 {%- set model_run_start_time_variable = run_started_at.strftime('%Y-%m-%d %H:%M:%S') -%}
 
 {{ config(
@@ -33,8 +34,8 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | Created intermed
     unique_key=['SURROGATE_KEY'],
     on_schema_change='append_new_columns',
     merge_exclude_columns=['CREATE_DTTM'],
-    tags=['finanzas', 'balance_presupuestario', 't2', 'balance_presupuestario_cp'],
     snowflake_warehouse='COMPUTE_WH',
+    tags=['finanzas', 'balance_presupuestario', 't2', 'balance_presupuestario_cp'],
     pre_hook=[
       "SET start_time = TO_TIMESTAMP('2000-01-01')",
       "SET end_time = CURRENT_TIMESTAMP()"
