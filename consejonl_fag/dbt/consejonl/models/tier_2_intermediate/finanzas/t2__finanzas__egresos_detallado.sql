@@ -28,25 +28,23 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | Created intermed
 ===========================================================================================================
 */
 
+{%- set model_run_start_time_variable = run_started_at.strftime('%Y-%m-%d %H:%M:%S') -%}
 
 {{ config(
-    materialized = "incremental",            -- antes "table"; tu objetivo describe incremental
-    unique_key = ["surrogate_key"],
-    on_schema_change = "append_new_columns",
-    merge_exclude_columns = ["CREATE_DTTM"],
-    snowflake_warehouse = "COMPUTE_WH",
-    tags = ["finanzas", "egresos_detallado", "t2", "egresos_detallado_cp"],
-    pre_hook = [
-      "SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
+    materialized='incremental',
+    unique_key=['surrogate_key'],
+    on_schema_change='append_new_columns',
+    merge_exclude_columns=['CREATE_DTTM'],
+    snowflake_warehouse='COMPUTE_WH',
+    tags=['finanzas','egresos_detallado','t2','egresos_detallado_cp'],
+    pre_hook=[
+      "SET start_time = TO_TIMESTAMP('2000-01-01')",
+      "SET end_time = CURRENT_TIMESTAMP()"
     ],
-    post_hook = [
+    post_hook=[
       "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
     ]
 ) }}
-
-
-
-{%- set model_run_start_time_variable = modules.datetime.datetime.now().astimezone(modules.pytz.timezone("America/Mexico_City")) -%}
 
 with base as (
     select
@@ -61,10 +59,9 @@ with base as (
         modificado,
         subejercicio,
         surrogate_key,
-        "AMPLIACIONES/REDUCCIONES",
+        \"AMPLIACIONES/REDUCCIONES\",
         current_timestamp() as CREATE_DTTM
     from {{ ref('t1__finanzas__egresos_detallado') }}
-    -- En modo CP, solo año actual
     where {{ period_filter('fecha') }}
 
     {% if is_incremental() %}
