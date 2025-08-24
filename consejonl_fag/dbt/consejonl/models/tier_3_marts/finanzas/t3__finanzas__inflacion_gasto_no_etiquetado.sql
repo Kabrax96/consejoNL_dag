@@ -21,66 +21,60 @@ Assumptions/Notes   :
 ===========================================================================================================
 */
 
-{%- set model_run_start_time_variable = modules.datetime.datetime.now().astimezone(modules.pytz.timezone("America/Mexico_City")) -%}
-{{
-  config(
-    materialized="table",
-    snowflake_warehouse="COMPUTE_WH",
-    pre_hook=["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"],
-    post_hook=["{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"]
-  )
-}}
+{%- set model_run_start_time_variable = run_started_at.strftime('%Y-%m-%d %H:%M:%S') -%}
 
--- 1) GNE by year + completeness (4 quarters)
+{{ config(
+  materialized='table',
+  snowflake_warehouse='COMPUTE_WH',
+  pre_hook=[
+    "SET start_time = TO_TIMESTAMP('2000-01-01')",
+    "SET end_time = CURRENT_TIMESTAMP()"
+  ],
+  post_hook=[
+    "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
+  ]
+) }}
+
 with gne_by_year as (
   select
-    date_part(year, fecha)::int                               as year,
-    count(distinct cuarto)                                    as quarters_cnt,
-    iff(count(distinct cuarto) = 4, true, false)              as is_complete_year,
-    sum(modificado)                                           as gne
+    date_part(year, fecha)::int  as year,
+    count(distinct cuarto)       as quarters_cnt,
+    iff(count(distinct cuarto) = 4, true, false) as is_complete_year,
+    sum(modificado)              as gne
   from {{ ref('t3__finanzas__egresos_no_etiquetados') }}
   group by 1
 ),
-
 years as (
   select distinct year from gne_by_year
 ),
-
 infl as (
   select year, inflation
   from {{ ref('inflacion_anual') }}
 ),
-
--- 2) cumulative inflation factor for Dec (X-6) -> Dec (X)
 cum_infl as (
   select
-    y.year                                                                 as year_x,
-    count(i.year)                                                          as infl_years_in_window,
-    exp( sum( ln(1 + i.inflation) ) )                                      as cum_infl_factor
+    y.year                                             as year_x,
+    count(i.year)                                      as infl_years_in_window,
+    exp(sum(ln(1 + i.inflation)))                      as cum_infl_factor
   from years y
-  join infl i
-    on i.year between y.year - 5 and y.year   -- covers Dec (X-6) -> Dec (X)
+  join infl i on i.year between y.year - 5 and y.year
   group by y.year
 ),
-
--- 3) base table with diagnostics
 base as (
   select
-    a.year                                        as year_x,
-    a.gne                                         as gne_x,
-    a.is_complete_year                            as is_complete_year_x,
-    a.quarters_cnt                                 as quarters_x,
-    b.gne                                         as gne_x_minus_5,
-    b.is_complete_year                            as is_complete_year_x_minus_5,
-    b.quarters_cnt                                 as quarters_x_minus_5,
-    c.cum_infl_factor                              as cum_infl_factor_x,
-    c.infl_years_in_window                         as infl_years_in_window_x
+    a.year                     as year_x,
+    a.gne                      as gne_x,
+    a.is_complete_year         as is_complete_year_x,
+    a.quarters_cnt             as quarters_x,
+    b.gne                      as gne_x_minus_5,
+    b.is_complete_year         as is_complete_year_x_minus_5,
+    b.quarters_cnt             as quarters_x_minus_5,
+    c.cum_infl_factor          as cum_infl_factor_x,
+    c.infl_years_in_window     as infl_years_in_window_x
   from gne_by_year a
   left join gne_by_year b on b.year = a.year - 5
   left join cum_infl      c on c.year_x = a.year
 ),
-
--- 4) final calc with strict guards
 calc as (
   select
     year_x,
@@ -104,20 +98,18 @@ calc as (
     end as adjusted_rate_4yr
   from base
 )
-
 select
-  year_x                 as year,
+  year_x              as year,
   gne_x,
   gne_x_minus_5,
   cum_infl_factor_x,
   adjusted_rate_4yr,
-  -- diagnostics to understand NULLs
   quarters_x,
   quarters_x_minus_5,
   infl_years_in_window_x,
   is_complete_year_x,
   is_complete_year_x_minus_5,
-  current_timestamp()    as create_dttm
+  current_timestamp() as create_dttm
 from calc
-where year_x >= (select min(year) from gne_by_year)  -- keep all years; guards decide NULL vs value
+where year_x >= (select min(year) from gne_by_year)
 order by year

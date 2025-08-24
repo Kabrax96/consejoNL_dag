@@ -30,8 +30,6 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | created raw tier
     tags=['finanzas', 'egresos_detallado', 'egresos_detallado_cp']
 ) }}
 
-
-
 with source as (
     select
         FECHA,
@@ -47,7 +45,7 @@ with source as (
         SURROGATE_KEY,
         "AMPLIACIONES/REDUCCIONES"
     from {{ source('staging', 'nuevo_leon_egresos_detallado') }}
-    where {{ period_filter('FECHA') }}       -- ← filtra por año cuando is_cp=true
+    where {{ period_filter('FECHA') }}
 )
 
 select * from source

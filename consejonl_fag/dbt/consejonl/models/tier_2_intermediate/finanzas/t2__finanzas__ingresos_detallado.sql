@@ -33,46 +33,44 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 2 model
 */
 
 
+{%- set model_run_start_time_variable = run_started_at.strftime('%Y-%m-%d %H:%M:%S') -%}
+
 {{ config(
-    materialized="incremental",
-    unique_key=["surrogate_key"],
-    on_schema_change="append_new_columns",
-    merge_exclude_columns=["CREATE_DTTM"],
-    snowflake_warehouse="COMPUTE_WH",
-    tags=["finanzas", "ingresos_detallado", "t2", "ingresos_detallado_cp"],
+    materialized='incremental',
+    unique_key=['surrogate_key'],
+    on_schema_change='append_new_columns',
+    merge_exclude_columns=['CREATE_DTTM'],
+    snowflake_warehouse='COMPUTE_WH',
+    tags=['finanzas', 'ingresos_detallado', 't2', 'ingresos_detallado_cp'],
     pre_hook=[
-      "SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
+      "SET start_time = TO_TIMESTAMP('2000-01-01')",
+      "SET end_time = CURRENT_TIMESTAMP()"
     ],
     post_hook=[
       "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
     ]
 ) }}
 
-
-
-{%- set model_run_start_time_variable = modules.datetime.datetime.now().astimezone(modules.pytz.timezone("America/Mexico_City")) -%}
-
 with base as (
     select
-        fecha,
-        cuarto,
-        seccion,
-        concepto,
-        estimado,
-        devengado,
-        recaudado,
-        diferencia,
-        modificado,
-        surrogate_key,
-        clave_primaria,
-        clave_secundaria,
-        ampliaciones_reducciones,
-        current_timestamp() as create_dttm
+        FECHA                       as fecha,
+        CUARTO                      as cuarto,
+        SECCION                     as seccion,
+        CONCEPTO                    as concepto,
+        ESTIMADO                    as estimado,
+        DEVENGADO                   as devengado,
+        RECAUDADO                   as recaudado,
+        DIFERENCIA                  as diferencia,
+        MODIFICADO                  as modificado,
+        SURROGATE_KEY               as surrogate_key,
+        CLAVE_PRIMARIA              as clave_primaria,
+        CLAVE_SECUNDARIA            as clave_secundaria,
+        AMPLIACIONES_REDUCCIONES    as ampliaciones_reducciones,
+        current_timestamp()         as create_dttm
     from {{ ref('t1__finanzas__ingresos_detallado') }}
-    where {{ period_filter('fecha') }}
-
+    where {{ period_filter('FECHA') }}
     {% if is_incremental() %}
-      and fecha > (
+      and FECHA > (
         select coalesce(max(fecha), '2000-01-01') from {{ this }}
       )
     {% endif %}

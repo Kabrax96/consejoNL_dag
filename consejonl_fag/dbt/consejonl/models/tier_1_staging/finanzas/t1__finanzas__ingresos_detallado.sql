@@ -28,18 +28,13 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 1 stagi
 ===========================================================================================================
 */
 
-
-
 {{ config(
     materialized='view',
     tags=['finanzas', 'ingresos_detallado', 'ingresos_detallado_cp']
 ) }}
 
-
-
 with src as (
     select
-         -- Raw columns from staging table (excluding Airbyte metadata)
         FECHA,
         CUARTO,
         SECCION,
@@ -56,7 +51,6 @@ with src as (
     from {{ source('staging', 'nuevo_leon_ingresos_detallado') }}
     where {{ period_filter('FECHA') }}
 ),
-
 normalized as (
     select
         {{ clean_date('FECHA') }}                        as FECHA,

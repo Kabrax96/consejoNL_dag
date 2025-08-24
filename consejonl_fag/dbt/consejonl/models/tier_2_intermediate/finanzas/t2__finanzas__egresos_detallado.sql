@@ -35,8 +35,8 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | Created intermed
     unique_key=['surrogate_key'],
     on_schema_change='append_new_columns',
     merge_exclude_columns=['CREATE_DTTM'],
-    snowflake_warehouse='COMPUTE_WH',
     tags=['finanzas','egresos_detallado','t2','egresos_detallado_cp'],
+    snowflake_warehouse='COMPUTE_WH',
     pre_hook=[
       "SET start_time = TO_TIMESTAMP('2000-01-01')",
       "SET end_time = CURRENT_TIMESTAMP()"
@@ -48,24 +48,23 @@ Alejandro Morales      | 08/08/2025     | consejo_nl_dbt      | Created intermed
 
 with base as (
     select
-        try_to_date(fecha)            as fecha,
-        codigo,
-        cuarto,
-        pagado,
-        seccion,
-        aprobado,
-        concepto,
-        devengado,
-        modificado,
-        subejercicio,
-        surrogate_key,
-        \"AMPLIACIONES/REDUCCIONES\",
-        current_timestamp() as CREATE_DTTM
+        try_to_date(FECHA)         as fecha,
+        CODIGO                     as codigo,
+        CUARTO                     as cuarto,
+        PAGADO                     as pagado,
+        SECCION                    as seccion,
+        APROBADO                   as aprobado,
+        CONCEPTO                   as concepto,
+        DEVENGADO                  as devengado,
+        MODIFICADO                 as modificado,
+        SUBEJERCICIO               as subejercicio,
+        SURROGATE_KEY              as surrogate_key,
+        "AMPLIACIONES/REDUCCIONES",
+        current_timestamp()        as CREATE_DTTM
     from {{ ref('t1__finanzas__egresos_detallado') }}
-    where {{ period_filter('fecha') }}
-
+    where {{ period_filter('FECHA') }}
     {% if is_incremental() %}
-      and try_to_date(fecha) > (
+      and try_to_date(FECHA) > (
         select coalesce(max(fecha), '2000-01-01') from {{ this }}
       )
     {% endif %}
