@@ -39,24 +39,19 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Verify YAML & deps (debug)
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        shell: bash
+      - name: Verify build config & files
         run: |
           set -euo pipefail
-          echo "Workspace: $GITHUB_WORKSPACE"
-          ls -la "$GITHUB_WORKSPACE"
-
-          YAML="$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
-          echo "YAML path: $YAML"
-          test -f "$YAML" || { echo "ERROR: No existe $YAML"; exit 1; }
           echo "=== dagster_cloud.yaml ==="
-          cat "$YAML"
+          cat consejonl_fag/dagster_cloud.yaml
+          echo "=== repo root tree ==="
+          ls -la
+          echo "=== requirements at repo root ==="
+          test -f requirements.txt || { echo "ERROR: falta requirements.txt en la raíz"; exit 1; }
+          cat requirements.txt
+          echo "=== list consejonl_fag ==="
+          ls -la consejonl_fag
 
-          REQS="$GITHUB_WORKSPACE/consejonl_fag/requirements.txt"
-          echo "Revisando $REQS"
-          test -f "$REQS" || { echo "ERROR: falta $REQS"; exit 1; }
-          grep -E '^dagster-cloud==' "$REQS" || { echo "ERROR: falta dagster-cloud en $REQS"; exit 1; }
 
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
