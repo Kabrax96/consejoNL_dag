@@ -1,0 +1,24 @@
+consejonl:
+  # Toma DBT_TARGET del entorno; default 'prod'
+  target: "{{ env_var('DBT_TARGET', 'prod') }}"
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'CONSEJO_NL') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA_DEV', 'STAGING') }}"
+      threads: 12
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'CONSEJO_NL') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA_PROD', 'ANALYTICS') }}"
+      threads: 12
