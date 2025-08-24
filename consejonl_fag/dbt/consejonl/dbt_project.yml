@@ -40,10 +40,6 @@ models:
       +schema: "marts"
       +materialized: table
 
-    audit:
-      +database: "{{ env_var('DBT_CDW_DATABASE', env_var('SNOWFLAKE_DATABASE')) }}"
-      +schema: "audit"
-      +materialized: table
 
 # (Opcional) Para que nuestra macro 'generate_schema_name' pueda tomar control
 dispatch:
