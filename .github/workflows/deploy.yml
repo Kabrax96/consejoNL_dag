@@ -53,6 +53,78 @@ jobs:
           ls -la consejonl_fag
 
 
+      - name: Checkout repo (exact commit)
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify build config & files
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          set -euo pipefail
+          echo "=== dagster_cloud.yaml ==="
+          cat consejonl_fag/dagster_cloud.yaml
+          echo "=== repo root tree ==="
+          ls -la
+          echo "=== requirements at repo root ==="
+          test -f requirements.txt || { echo "ERROR: falta requirements.txt en la raíz"; exit 1; }
+          cat requirements.txt
+          echo "=== list consejonl_fag ==="
+          ls -la consejonl_fag
+
+
+      - name: Setup Python for dbt parse
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install deps for dbt parse
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+
+      - name: Generate dbt manifest (parse)
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from dagster_dbt import DbtCliResource
+
+          root = Path(".").resolve()  # raíz del repo (build.directory: "..")
+          project_dir = root / "consejonl_fag" / "dbt" / "consejonl"
+          profiles_dir = root / "consejonl_fag" / "dbt" / "profiles_dagster"
+
+          assert project_dir.exists(), f"missing {project_dir}"
+          assert profiles_dir.exists(), f"missing {profiles_dir}"
+
+          dbt = DbtCliResource(
+              project_dir=str(project_dir),
+              profiles_dir=str(profiles_dir),
+              target=os.getenv("DBT_TARGET","prod"),
+          )
+          inv = dbt.cli(["parse"])
+          inv.wait()
+          manifest = project_dir / "target" / "manifest.json"
+          assert manifest.exists(), f"manifest not generated at {manifest}"
+          print("OK: manifest.json generated at", manifest)
+          PY
+
+      - name: Python Executable Deploy
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
+        with:
+          dagster_cloud_file: "$GITHUB_WORKSPACE/${{ env.DAGSTER_CLOUD_FILE }}"
+          build_output_dir: "$GITHUB_WORKSPACE/build"
+          python_version: "${{ env.PYTHON_VERSION }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v0.1
