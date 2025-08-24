@@ -42,10 +42,10 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 3 model
 
 {{
     config(
-        materialized = "table",
-        snowflake_warehouse = "COMPUTE_WH",
-        pre_hook = ["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"],
-        post_hook = [
+        materialized="table",
+        snowflake_warehouse="COMPUTE_WH",
+        pre_hook=["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"],
+        post_hook=[
             "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
         ]
     )

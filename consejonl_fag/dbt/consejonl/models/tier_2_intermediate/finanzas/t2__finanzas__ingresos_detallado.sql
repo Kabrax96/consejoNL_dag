@@ -34,16 +34,16 @@ Alejandro Morales Benavides   | 2025-08-12  | consejonl   | Created Tier 2 model
 
 
 {{ config(
-    materialized = "incremental",
-    unique_key = ["surrogate_key"],
-    on_schema_change = "append_new_columns",
-    merge_exclude_columns = ["CREATE_DTTM"],
-    snowflake_warehouse = "COMPUTE_WH",
-    tags = ["finanzas", "ingresos_detallado", "t2", "ingresos_detallado_cp"],
-    pre_hook = [
+    materialized="incremental",
+    unique_key=["surrogate_key"],
+    on_schema_change="append_new_columns",
+    merge_exclude_columns=["CREATE_DTTM"],
+    snowflake_warehouse="COMPUTE_WH",
+    tags=["finanzas", "ingresos_detallado", "t2", "ingresos_detallado_cp"],
+    pre_hook=[
       "SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
     ],
-    post_hook = [
+    post_hook=[
       "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
     ]
 ) }}

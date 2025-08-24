@@ -30,15 +30,15 @@ Alejandro Morales Benavides      | 2025-08-06     | consejo_nl          | Create
 
 {{
     config(
-        materialized = "table",
-        unique_key = ["YEAR_QUARTER"],
-        on_schema_change = "append_new_columns",
-        merge_exclude_columns = ["CREATE_TMS", "CREATE_BY"],
-        tags = ["program:consejo_nl", "indicator:balance_presupuestario", "layer:t3"],
+        materialized="table",
+        unique_key=["YEAR_QUARTER"],
+        on_schema_change="append_new_columns",
+        merge_exclude_columns=["CREATE_TMS", "CREATE_BY"],
+        tags=["program:consejo_nl", "indicator:balance_presupuestario", "layer:t3"],
         snowflake_warehouse = "COMPUTE_WH",
-        pre_hook = ["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
+        pre_hook=["SET start_time = TO_TIMESTAMP('2000-01-01'); SET end_time = CURRENT_TIMESTAMP;"
         ],
-        post_hook = [
+        post_hook=[
             "{{ update_incremental_load_duration('" ~ this.identifier ~ "', '" ~ model_run_start_time_variable ~ "') }}"
         ]
     )
