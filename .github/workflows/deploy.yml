@@ -10,9 +10,9 @@ concurrency:
 env:
   DAGSTER_CLOUD_URL: "https://connl.dagster.cloud"
   DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-  ENABLE_FAST_DEPLOYS: 'true'
-  PYTHON_VERSION: '3.11'
-  DAGSTER_CLOUD_FILE: 'consejonl_fag/dagster_cloud.yaml'
+  ENABLE_FAST_DEPLOYS: "true"
+  PYTHON_VERSION: "3.11"
+  DAGSTER_CLOUD_FILE: "consejonl_fag/dagster_cloud.yaml"
 
 jobs:
   dagster_cloud_default_deploy:
@@ -39,6 +39,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Verify build config & files
         if: steps.prerun.outputs.result == 'pex-deploy'
         run: |
@@ -53,18 +59,11 @@ jobs:
           echo "=== list consejonl_fag ==="
           ls -la consejonl_fag
 
-      - name: Set up Python for dbt parse
-        if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install deps for dbt parse
+      - name: Install Python deps for dbt parse
         if: steps.prerun.outputs.result == 'pex-deploy'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
 
       - name: Generate dbt manifest (parse)
         if: steps.prerun.outputs.result == 'pex-deploy'
@@ -92,21 +91,20 @@ jobs:
           assert profiles_dir.exists(), f"missing {profiles_dir}"
 
           dbt = DbtCliResource(
-            project_dir=str(project_dir),
-            profiles_dir=str(profiles_dir),
-            target=os.getenv("DBT_TARGET","prod"),
+              project_dir=str(project_dir),
+              profiles_dir=str(profiles_dir),
+              target=os.getenv("DBT_TARGET", "prod"),
           )
-          inv = dbt.cli(["parse"])
-          res = inv.wait()
-          if not res.success:
-            raise SystemExit("dbt parse failed")
+
+          # En dagster-dbt 0.27.x: wait() no devuelve .success; lanza si falla.
+          dbt.cli(["parse"]).wait()
 
           target_dir = project_dir / "target"
           manifests = list(target_dir.rglob("manifest.json"))
           if manifests:
-            print("OK: manifest.json at", manifests[0])
+              print("OK: manifest.json at", manifests[0])
           else:
-            print(f"WARNING: no manifest.json found under {target_dir} (dbt 1.10 uses hashed subdirs). Runtime parse in Dagster will handle it.")
+              print(f"NOTE: no manifest.json found under {target_dir}; dbt 1.10 usa subcarpetas con hash. Dagster parseará en runtime.")
           PY
 
       - name: Python Executable Deploy
