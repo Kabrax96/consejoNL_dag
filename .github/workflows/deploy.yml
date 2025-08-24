@@ -89,30 +89,38 @@ jobs:
 
       - name: Generate dbt manifest (parse)
         if: steps.prerun.outputs.result == 'pex-deploy'
+        env:
+          DBT_TARGET: ${{ secrets.DBT_TARGET }}
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA_DEV: ${{ secrets.SNOWFLAKE_SCHEMA_DEV }}
         run: |
           python - <<'PY'
           import os
           from pathlib import Path
           from dagster_dbt import DbtCliResource
 
-          root = Path(".").resolve()  # raíz del repo (build.directory: "..")
+          root = Path(".").resolve()
           project_dir = root / "consejonl_fag" / "dbt" / "consejonl"
           profiles_dir = root / "consejonl_fag" / "dbt" / "profiles_dagster"
-
-          assert project_dir.exists(), f"missing {project_dir}"
-          assert profiles_dir.exists(), f"missing {profiles_dir}"
 
           dbt = DbtCliResource(
               project_dir=str(project_dir),
               profiles_dir=str(profiles_dir),
-              target=os.getenv("DBT_TARGET","prod"),
+              target=os.getenv("DBT_TARGET","dev"),
           )
           inv = dbt.cli(["parse"])
           inv.wait()
+
           manifest = project_dir / "target" / "manifest.json"
           assert manifest.exists(), f"manifest not generated at {manifest}"
-          print("OK: manifest.json generated at", manifest)
+          print("OK: manifest generated at", manifest)
           PY
+
 
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
