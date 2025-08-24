@@ -1,27 +1,21 @@
-# consejonl_fag/dbt_defs.py
+
 from pathlib import Path
 import os
 import dagster as dg
-from dagster import RunRequest, AssetExecutionContext
-from dagster_dbt import DbtProject, DbtCliResource, dbt_assets
+from dagster_dbt import DbtCliResource
 
+# === Rutas del proyecto dbt ===
 BASE_DIR = Path(__file__).resolve().parent
-DBT_PROJECT_DIR = BASE_DIR / "dbt" / "consejonl"
-DBT_PROFILES_DIR = BASE_DIR / "dbt" / "profiles_dagster"
+DBT_PROJECT_DIR = BASE_DIR / "dbt" / "consejonl"          # contiene dbt_project.yml
+DBT_PROFILES_DIR = BASE_DIR / "dbt" / "profiles_dagster"  # contiene profiles.yml
 
 if not DBT_PROJECT_DIR.exists():
     raise RuntimeError(f"DBT project_dir not found: {DBT_PROJECT_DIR}")
 if not DBT_PROFILES_DIR.exists():
     raise RuntimeError(f"DBT profiles_dir not found: {DBT_PROFILES_DIR}")
 
-DBT_TARGET = os.getenv("DBT_TARGET", "prod")
-
-# Proyecto dbt
-project = DbtProject(project_dir=DBT_PROJECT_DIR)
-
-# (Opcional) si además pones la env var DAGSTER_DBT_PARSE_PROJECT_ON_LOAD=1,
-# esto generará el manifest en load:
-project.prepare_if_dev()
+# Target desde env (defecto: dev)
+DBT_TARGET = os.getenv("DBT_TARGET", "dev")
 
 # Recurso CLI de dbt
 dbt = DbtCliResource(
@@ -30,55 +24,62 @@ dbt = DbtCliResource(
     target=DBT_TARGET,
 )
 
-# Assets de dbt (requieren target/manifest.json)
-@dbt_assets(manifest=project.manifest_path)
-def dbt_models(context: AssetExecutionContext, dbt: DbtCliResource):
-    yield from dbt.cli(["build", "--fail-fast"], context=context).stream()
+# --- Op: ejecuta dbt build. Puedes pasar args extra desde run_config ---
+@dg.op(config_schema={"extra_args": [str]}, required_resource_keys={"dbt"})
+def run_dbt_build(context: dg.OpExecutionContext):
+    extra_args = context.op_config.get("extra_args") or []
 
-# Job solo dbt
-dbt_only_job = dg.define_asset_job(
-    "dbt_only",
-    selection=dg.AssetSelection.assets(dbt_models),
-)
+    context.log.info("Running `dbt deps` …")
+    context.resources.dbt.cli(["deps"], context=context).wait()
 
-# (Opcional) op para pipeline secuencial
-@dg.op(required_resource_keys={"dbt"})
-def run_dbt_build(context):
-    deps = context.resources.dbt.cli(["deps"], context=context)
-    deps.wait()
-    inv = context.resources.dbt.cli(["build", "--fail-fast"], context=context)
-    res = inv.wait()
-    if not res.success:
-        raise Exception("dbt build failed")
+    cmd = ["build", "--fail-fast", *extra_args]
+    context.log.info(f"Running `dbt {' '.join(extra_args)}` …")
+    # En dagster-dbt 0.27.x, .wait() levanta excepción si falla; si retorna, fue OK.
+    context.resources.dbt.cli(cmd, context=context).wait()
 
-# Sensor: al terminar Airbyte dispara dbt
+# --- Job simple que llama al op anterior ---
+@dg.graph
+def _dbt_build_graph():
+    run_dbt_build()
+
+dbt_only_job = _dbt_build_graph.to_job(name="dbt_only_job")
+
+# --- Sensor: después del asset de Airbyte, dispara el job de dbt ---
 @dg.asset_sensor(
     asset_key=dg.AssetKey("airbyte_sync_consejo_nl"),
     job=dbt_only_job,
     minimum_interval_seconds=5,
 )
 def airbyte_to_dbt_sensor(context, asset_event):
+    """
+    Si el run que disparó el asset de Airbyte trae tag mode=cp,
+    corremos dbt con selección por tag y una var is_cp=true.
+    """
     triggering_run = context.instance.get_run_by_id(asset_event.dagster_run.run_id)
     tags = triggering_run.tags if triggering_run else {}
     is_cp = tags.get("mode") == "cp"
 
     if is_cp:
-        return RunRequest(
+        # Pasa flags/vars al op vía config
+        return dg.RunRequest(
             run_key=f"dbt_after_cp_{int(asset_event.timestamp)}",
             tags={"triggered_by": "airbyte_to_dbt_sensor", "mode": "cp"},
             run_config={
-                "resources": {
-                    "dbt": {
+                "ops": {
+                    "run_dbt_build": {
                         "config": {
-                            "vars": {"is_cp": True},
-                            "args": ["--select", "tag:balance_presupuestario_cp+"],
+                            "extra_args": [
+                                "--vars", "{is_cp: true}",
+                                "--select", "tag:balance_presupuestario_cp+",
+                            ]
                         }
                     }
                 }
             },
         )
-    else:
-        return RunRequest(
-            run_key=f"dbt_after_{int(asset_event.timestamp)}",
-            tags={"triggered_by": "airbyte_to_dbt_sensor", "mode": "normal"},
-        )
+
+    # modo normal
+    return dg.RunRequest(
+        run_key=f"dbt_after_{int(asset_event.timestamp)}",
+        tags={"triggered_by": "airbyte_to_dbt_sensor", "mode": "normal"},
+    )
