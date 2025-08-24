@@ -3,7 +3,8 @@ from pathlib import Path
 import os
 import dagster as dg
 from dagster import RunRequest
-from dagster_dbt import DbtCliResource, load_assets_from_dbt_project
+from dagster_dbt import DbtCliResource
+from dagster_dbt.asset_defs import load_assets_from_dbt_project
 
 # === Rutas relativas y robustas ===
 BASE_DIR = Path(__file__).resolve().parent
@@ -34,7 +35,7 @@ dbt_models = load_assets_from_dbt_project(
 # Job que ejecuta únicamente los assets de dbt
 dbt_only_job = dg.define_asset_job(
     "dbt_only",
-    selection=dg.AssetSelection.keys(*[a.key for a in dbt_models]),
+    selection=dg.AssetSelection.assets(*dbt_models),
 )
 
 # (Opcional) op para ejecutar dbt build en jobs secuenciales
