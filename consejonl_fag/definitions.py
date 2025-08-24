@@ -15,8 +15,9 @@ airbyte_daily_6utc = dg.ScheduleDefinition(
     cron_schedule="0 6 * * *",
 )
 
+
 defs = dg.Definitions(
-    assets=[airbyte_sync_consejo_nl],       # dbt corre como job, no como assets
+    assets=[airbyte_sync_consejo_nl],     # dbt corre como job, no como assets aquí
     resources={"dbt": dbt},
     jobs=[airbyte_only_job, dbt_only_job],
     schedules=[airbyte_daily_6utc],

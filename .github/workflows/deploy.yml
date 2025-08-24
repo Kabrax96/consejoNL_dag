@@ -96,7 +96,7 @@ jobs:
               target=os.getenv("DBT_TARGET", "prod"),
           )
 
-          # En dagster-dbt 0.27.x: wait() no devuelve .success; lanza si falla.
+          # En dagster-dbt 0.27.x: wait() lanza excepción si falla; no usa .success
           dbt.cli(["parse"]).wait()
 
           target_dir = project_dir / "target"
@@ -105,6 +105,37 @@ jobs:
               print("OK: manifest.json at", manifests[0])
           else:
               print(f"NOTE: no manifest.json found under {target_dir}; dbt 1.10 usa subcarpetas con hash. Dagster parseará en runtime.")
+          PY
+
+      - name: Smoke test: module has defs (Dagster)
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== quick tree (repo root) ==="
+          ls -la
+          echo "=== consejonl_fag/ tree ==="
+          ls -la consejonl_fag || true
+          echo "=== head of consejonl_fag/definitions.py ==="
+          sed -n '1,120p' consejonl_fag/definitions.py || true
+
+          python - <<'PY'
+          import sys, importlib, traceback
+          print("Python:", sys.version)
+          try:
+              m = importlib.import_module("consejonl_fag.definitions")
+              defs = getattr(m, "defs", None)
+              assert defs is not None, "definitions.defs no encontrado"
+              try:
+                  from dagster import Definitions
+                  assert isinstance(defs, Definitions), f"defs no es Definitions, es {type(defs)}"
+              except Exception as type_check_err:
+                  print("Aviso: no pude validar el tipo con dagster; continúo porque 'defs' existe.", type_check_err)
+              print("OK: defs presente y accesible en consejonl_fag.definitions")
+          except Exception:
+              print("FALLO smoke test de defs:\n")
+              traceback.print_exc()
+              raise SystemExit(1)
           PY
 
       - name: Python Executable Deploy
