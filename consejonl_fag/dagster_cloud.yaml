@@ -1,6 +1,6 @@
 # consejonl_fag/dagster_cloud.yaml
 locations:
-  - location_name: consejoNL_dag
+  - location_name: consejonl_dag
     build:
       directory: ".."
       python_version: "3.11"
