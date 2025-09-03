@@ -4,23 +4,32 @@ import os
 import dagster as dg
 from dagster_dbt import DbtCliResource
 
-# Explicitly set the base directory to the project root
-PROJECT_ROOT = Path("/Users/alexm./Desktop/consejoNL_dag/consejonl_fag").resolve()
+# Resolve paths relative to this file, with env var overrides for flexibility
+PACKAGE_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", str(PACKAGE_ROOT))).resolve()
 
-# Define the paths for the dbt project and profiles
-DBT_PROJECT_DIR = PROJECT_ROOT / "dbt" / "consejonl"
-DBT_PROFILES_DIR = PROJECT_ROOT / "dbt" / "profiles_dagster"
+# Define the paths for the dbt project and profiles (overridable via env)
+DBT_PROJECT_DIR = Path(
+    os.getenv("DBT_PROJECT_DIR", str(PROJECT_ROOT / "dbt" / "consejonl"))
+).resolve()
+DBT_PROFILES_DIR = Path(
+    os.getenv("DBT_PROFILES_DIR", str(PROJECT_ROOT / "dbt" / "profiles_dagster"))
+).resolve()
 
-# Debugging: Print the resolved paths
+# Debugging: Print the resolved paths (useful in Cloud)
 print(f"Resolved PROJECT_ROOT: {PROJECT_ROOT}")
 print(f"Resolved DBT_PROJECT_DIR: {DBT_PROJECT_DIR}")
 print(f"Resolved DBT_PROFILES_DIR: {DBT_PROFILES_DIR}")
 
-# Check if the directories exist
+# Validate the existence of the directories and files early (fail fast if misconfigured)
 if not DBT_PROJECT_DIR.exists():
     raise RuntimeError(f"DBT project_dir not found: {DBT_PROJECT_DIR}")
+if not (DBT_PROJECT_DIR / "dbt_project.yml").exists():
+    raise RuntimeError(f"dbt_project.yml not found in: {DBT_PROJECT_DIR}")
 if not DBT_PROFILES_DIR.exists():
     raise RuntimeError(f"DBT profiles_dir not found: {DBT_PROFILES_DIR}")
+if not (DBT_PROFILES_DIR / "profiles.yml").exists():
+    raise RuntimeError(f"profiles.yml not found in: {DBT_PROFILES_DIR}")
 
 # Get the dbt target from the environment, default to "dev"
 DBT_TARGET = os.getenv("DBT_TARGET", "dev")
