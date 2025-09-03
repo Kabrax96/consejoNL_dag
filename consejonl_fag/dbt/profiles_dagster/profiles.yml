@@ -10,7 +10,7 @@ consejonl:
       role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
       database: "{{ env_var('SNOWFLAKE_DATABASE', 'CONSEJO_NL') }}"
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA_DEV', 'STAGING') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', env_var('SNOWFLAKE_SCHEMA_DEV', 'STAGING')) }}"
       threads: 12
     prod:
       type: snowflake
@@ -20,5 +20,5 @@ consejonl:
       role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
       database: "{{ env_var('SNOWFLAKE_DATABASE', 'CONSEJO_NL') }}"
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA_PROD', 'ANALYTICS') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', env_var('SNOWFLAKE_SCHEMA_PROD', 'ANALYTICS')) }}"
       threads: 12

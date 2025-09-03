@@ -6,3 +6,19 @@ locations:
       python_version: "3.11"
     code_source:
       autoload_defs_module_name: consejonl_fag.definitions
+    env_vars:
+      - DBT_TARGET
+      - DBT_PROJECT_DIR
+      - DBT_PROFILES_DIR
+      - DAGSTER_DBT_PARSE_PROJECT_ON_LOAD
+      - SNOWFLAKE_ACCOUNT
+      - SNOWFLAKE_USER
+      - SNOWFLAKE_PASSWORD
+      - SNOWFLAKE_ROLE
+      - SNOWFLAKE_WAREHOUSE
+      - SNOWFLAKE_DATABASE
+      - SNOWFLAKE_SCHEMA
+      - SNOWFLAKE_SCHEMA_DEV
+      - SNOWFLAKE_SCHEMA_PROD
+      - AIRBYTE_BASE
+      - AIRBYTE_CONNECTION_ID

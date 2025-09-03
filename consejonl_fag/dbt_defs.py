@@ -8,13 +8,33 @@ from dagster_dbt import DbtCliResource
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", str(PACKAGE_ROOT))).resolve()
 
+
+def _resolve_dir(env_var: str, default_subpath: Path) -> Path:
+    """Prefer env var if it exists and points to a real path; otherwise fallback.
+
+    This avoids failures in environments where an env override was set to a
+    local-absolute path (e.g., /Users/...) that doesn't exist in Cloud.
+    """
+    env_val = os.getenv(env_var)
+    if env_val:
+        candidate = Path(env_val)
+        # If relative path, treat it relative to the package root
+        if not candidate.is_absolute():
+            candidate = PROJECT_ROOT / candidate
+        if candidate.exists():
+            return candidate.resolve()
+        else:
+            print(
+                f"Warning: {env_var}='{env_val}' does not exist after resolving to '{candidate}'; "
+                f"falling back to default under PROJECT_ROOT",
+                flush=True,
+            )
+    return (PROJECT_ROOT / default_subpath).resolve()
+
+
 # Define the paths for the dbt project and profiles (overridable via env)
-DBT_PROJECT_DIR = Path(
-    os.getenv("DBT_PROJECT_DIR", str(PROJECT_ROOT / "dbt" / "consejonl"))
-).resolve()
-DBT_PROFILES_DIR = Path(
-    os.getenv("DBT_PROFILES_DIR", str(PROJECT_ROOT / "dbt" / "profiles_dagster"))
-).resolve()
+DBT_PROJECT_DIR = _resolve_dir("DBT_PROJECT_DIR", Path("dbt") / "consejonl")
+DBT_PROFILES_DIR = _resolve_dir("DBT_PROFILES_DIR", Path("dbt") / "profiles_dagster")
 
 # Debugging: Print the resolved paths (useful in Cloud)
 print(f"Resolved PROJECT_ROOT: {PROJECT_ROOT}")
