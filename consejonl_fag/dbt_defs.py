@@ -41,15 +41,21 @@ print(f"Resolved PROJECT_ROOT: {PROJECT_ROOT}")
 print(f"Resolved DBT_PROJECT_DIR: {DBT_PROJECT_DIR}")
 print(f"Resolved DBT_PROFILES_DIR: {DBT_PROFILES_DIR}")
 
-# Validate the existence of the directories and files early (fail fast if misconfigured)
-if not DBT_PROJECT_DIR.exists():
-    raise RuntimeError(f"DBT project_dir not found: {DBT_PROJECT_DIR}")
-if not (DBT_PROJECT_DIR / "dbt_project.yml").exists():
-    raise RuntimeError(f"dbt_project.yml not found in: {DBT_PROJECT_DIR}")
-if not DBT_PROFILES_DIR.exists():
-    raise RuntimeError(f"DBT profiles_dir not found: {DBT_PROFILES_DIR}")
-if not (DBT_PROFILES_DIR / "profiles.yml").exists():
-    raise RuntimeError(f"profiles.yml not found in: {DBT_PROFILES_DIR}")
+# Best-effort validation; log warnings but do not abort code loading in Cloud
+def _warn_if_missing():
+    missing = []
+    if not DBT_PROJECT_DIR.exists():
+        missing.append(f"DBT project_dir not found: {DBT_PROJECT_DIR}")
+    if not (DBT_PROJECT_DIR / "dbt_project.yml").exists():
+        missing.append(f"dbt_project.yml not found in: {DBT_PROJECT_DIR}")
+    if not DBT_PROFILES_DIR.exists():
+        missing.append(f"DBT profiles_dir not found: {DBT_PROFILES_DIR}")
+    if not (DBT_PROFILES_DIR / "profiles.yml").exists():
+        missing.append(f"profiles.yml not found in: {DBT_PROFILES_DIR}")
+    for msg in missing:
+        print(f"WARNING: {msg}", flush=True)
+
+_warn_if_missing()
 
 # Get the dbt target from the environment, default to "dev"
 DBT_TARGET = os.getenv("DBT_TARGET", "dev")
@@ -68,6 +74,18 @@ dbt = DbtCliResource(
 @dg.op(config_schema={"extra_args": [str]}, required_resource_keys={"dbt"})
 def run_dbt_build(context: dg.OpExecutionContext):
     extra_args = context.op_config.get("extra_args") or []
+    # Guardrails: ensure paths exist at run time
+    missing = []
+    if not DBT_PROJECT_DIR.exists():
+        missing.append(f"DBT_PROJECT_DIR '{DBT_PROJECT_DIR}' does not exist")
+    if not (DBT_PROJECT_DIR / "dbt_project.yml").exists():
+        missing.append(f"dbt_project.yml missing under '{DBT_PROJECT_DIR}'")
+    if not DBT_PROFILES_DIR.exists():
+        missing.append(f"DBT_PROFILES_DIR '{DBT_PROFILES_DIR}' does not exist")
+    if not (DBT_PROFILES_DIR / "profiles.yml").exists():
+        missing.append(f"profiles.yml missing under '{DBT_PROFILES_DIR}'")
+    if missing:
+        raise dg.Failure("; ".join(missing))
     context.resources.dbt.cli(["deps"], context=context).wait()
     context.resources.dbt.cli(["build", "--fail-fast", *extra_args], context=context).wait()
 
