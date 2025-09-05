@@ -5,4 +5,4 @@ locations:
       directory: ".."
       python_version: "3.11"
     code_source:
-      autoload_defs_module_name: consejonl_fag.definitions
+      module_name: consejonl_fag.definitions
